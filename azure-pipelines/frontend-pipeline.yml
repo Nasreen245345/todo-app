@@ -1,0 +1,75 @@
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - frontend/**
+
+variables:
+  - group: taskapp-variables
+  - name: STORAGE_ACCOUNT
+    value: storagetodoappnasreen
+
+stages:
+
+# STAGE 1: Build React App
+- stage: Build
+  displayName: 'Build React App'
+  jobs:
+  - job: BuildJob
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - checkout: self
+
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '18.x'
+      displayName: 'Install Node.js'
+
+    - script: |
+        cd frontend
+        npm install
+        npm run build
+      displayName: 'Install dependencies and build'
+      env:
+        REACT_APP_API_URL: https://app-todoapp-backend-nasreen.azurewebsites.net/api/tasks
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: 'frontend/build'
+        artifactName: 'frontend-build'
+
+# STAGE 2: Deploy to Azure Blob Storage
+- stage: Deploy
+  displayName: 'Deploy to Azure Blob Storage'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - deployment: DeployJob
+    environment: 'development'
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: DownloadBuildArtifacts@1
+            inputs:
+              artifactName: 'frontend-build'
+              downloadPath: '$(System.ArtifactsDirectory)'
+
+          - task: AzureCLI@2
+            displayName: 'Upload to Azure Blob Storage'
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az storage blob upload-batch \
+                  --account-name $(STORAGE_ACCOUNT) \
+                  --destination '$web' \
+                  --source '$(System.ArtifactsDirectory)/frontend-build' \
+                  --overwrite

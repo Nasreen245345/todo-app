@@ -4,6 +4,12 @@ import mysql from "mysql2/promise";
 
 dotenv.config();
 
+const sslConfig = {
+  ssl: {
+    rejectUnauthorized: false
+  }
+};
+
 const waitForDB = async (retries = 5, delay = 5000) => {
   for (let i = 0; i < retries; i++) {
     try {
@@ -11,6 +17,7 @@ const waitForDB = async (retries = 5, delay = 5000) => {
         host: process.env.DB_HOST,
         user: process.env.DB_USER,
         password: process.env.DB_PASS,
+        ssl: { rejectUnauthorized: false }
       });
       await connection.end();
       return;
@@ -29,6 +36,7 @@ const createDatabase = async () => {
       host: process.env.DB_HOST,
       user: process.env.DB_USER,
       password: process.env.DB_PASS,
+      ssl: { rejectUnauthorized: false }
     });
 
     await connection.query(`CREATE DATABASE IF NOT EXISTS \`${process.env.DB_NAME}\`;`);
@@ -47,20 +55,22 @@ export const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST!,
     dialect: "mysql",
-    logging: false, // Disable logging for clean output
+    logging: false,
+    dialectOptions: {
+      ssl: {
+        rejectUnauthorized: false
+      }
+    }
   }
 );
 
 export const connectDB = async () => {
   try {
-    await createDatabase(); // Ensure the database exists first
+    await createDatabase();
     await sequelize.authenticate();
     console.log("✅ Database connected successfully.");
-    
-    // Sync all models (tables will be created if they don't exist)
-    await sequelize.sync({ alter: true }); 
+    await sequelize.sync({ alter: true });
     console.log("✅ Tables synced successfully.");
-
   } catch (error) {
     console.error("❌ Database connection failed:", error);
     process.exit(1);

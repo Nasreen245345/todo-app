@@ -18,8 +18,14 @@ services:
     environment:
       DB_HOST: mysql
       DB_USER: root
+<<<<<<< Updated upstream
       DB_PASS: yourpassword
       DB_NAME: todo_db
+=======
+      DB_PASS: nsrn245345
+      DB_NAME: dbtodoapp
+      PORT: 5000
+>>>>>>> Stashed changes
     ports:
       - "5000:5000"
     depends_on:
