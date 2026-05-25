@@ -1,20 +1,14 @@
-# Use an official Node.js runtime as a parent image
-FROM node:14
-
-# Set the working directory to /app
+# Stage 1: Build the React application
+FROM node:14 AS build
 WORKDIR /app
-
-# Copy the package.json and package-lock.json for npm install
 COPY package*.json ./
-
-# Install the dependencies
 RUN npm install
-
-# Copy the rest of the frontend files into the container
 COPY . .
+RUN npm run build
 
-# Expose port 3000 for the frontend
-EXPOSE 3000
-
-# Start the frontend application
-CMD ["npm", "start"]
+# Stage 2: Serve with Nginx
+FROM nginx:alpine
+COPY --from=build /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
